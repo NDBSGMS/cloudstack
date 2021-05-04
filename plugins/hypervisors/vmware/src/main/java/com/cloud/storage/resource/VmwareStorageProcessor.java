@@ -2532,7 +2532,7 @@ public class VmwareStorageProcessor implements StorageProcessor {
 
             try {
                 VirtualStorageObjectManagerMO vStorageObjectManagerMO = new VirtualStorageObjectManagerMO(context);
-                VStorageObject virtualDisk = vStorageObjectManagerMO.createDisk(morDatastore, VirtualDiskType.THIN, volume.getSize(), volumeDatastorePath, volumeUuid);
+                VStorageObject virtualDisk = vStorageObjectManagerMO.createDisk(morDatastore, VirtualDiskType.EAGER_ZEROED_THICK, volume.getSize(), volumeDatastorePath, volumeUuid);
                 DatastoreFile file = new DatastoreFile(((BaseConfigInfoDiskFileBackingInfo)virtualDisk.getConfig().getBacking()).getFilePath());
                 newVol.setPath(file.getFileBaseName());
                 newVol.setSize(volume.getSize());
