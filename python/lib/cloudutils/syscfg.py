@@ -43,7 +43,7 @@ class sysConfigAgentFactory:
             return sysConfigRedhat5(glbEnv)
         elif distribution == "RHEL7":
             return sysConfigRedhat7(glbEnv)
-        elif distribution == "RHEL8":
+        elif distribution == "RHEL8" or distribution == "SUSE15":
             return sysConfigRedhat8(glbEnv)
         else:
             print("Can't find the distribution version")
@@ -200,7 +200,7 @@ class sysConfigRedhat7(sysConfigAgentRedhat7Base):
                          nfsConfig(self),
                          cloudAgentConfig(self)]
 
-#it covers RHEL8
+#it covers RHEL8/openSUSEleap15
 class sysConfigRedhat8(sysConfigAgentRedhat8Base):
     def __init__(self, glbEnv):
         super(sysConfigRedhat8, self).__init__(glbEnv)

@@ -20,6 +20,7 @@ from subprocess import PIPE, Popen
 from signal import alarm, signal, SIGALRM, SIGKILL
 import sys
 import os
+
 class bash:
     def __init__(self, args, timeout=600):
         self.args = args
@@ -134,7 +135,16 @@ class Distribution:
                 self.distro = "Ubuntu"
             else:
                 raise UnknownSystemException(distributor)
-        else: 
+        elif os.path.exists("/etc/os-release"):
+            o = open("/etc/os-release")
+            os_release = {}
+            for line in o.readlines():
+                key, val = line.replace("\"","").replace("\n","").split("=")
+                os_release[key] = val
+            if os_release.get("ID") == "opensuse-leap":
+                if os_release.get("VERSION").split(".")[0] == "15":
+                    self.distro = "SUSE15"
+        else:
             raise UnknownSystemException
 
     def getVersion(self):
