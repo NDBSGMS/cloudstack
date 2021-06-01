@@ -36,6 +36,7 @@ Optional arguments:
    -s, --simulator string                  Build package for Simulator ("default"|"DEFAULT"|"simulator"|"SIMULATOR") (default "default")
    -b, --brand string                      Set branding to be used in package name (it will override any branding string in POM version)
    -T, --use-timestamp                     Use epoch timestamp instead of SNAPSHOT in the package name (if not provided, use "SNAPSHOT")
+   -n, --no-tests                          Skip tests during maven build
 
 Other arguments:
    -h, --help                              Display this help message and exit
@@ -61,6 +62,7 @@ NOW="$(date +%s)"
 #   $4 package release version
 #   $5 brand string to apply/override
 #   $6 use timestamp flag
+#   $7 skip tests flag
 function packaging() {
     RPMDIR=$PWD/../dist/rpmbuild
     PACK_PROJECT=cloudstack
@@ -76,7 +78,9 @@ function packaging() {
     else
         INDICATOR="SNAPSHOT"
     fi
-
+    if [ "$7" == "true" ]; then
+        DEFSKIPTESTS="-D_skiptests true"
+    fi
     DISTRO=$3
 
     MVN=$(which mvn)
@@ -161,7 +165,7 @@ function packaging() {
     echo ". executing rpmbuild"
     cp "$PWD/$DISTRO/cloud.spec" "$RPMDIR/SPECS"
 
-    (cd "$RPMDIR"; rpmbuild --define "_topdir ${RPMDIR}" "${DEFVER}" "${DEFFULLVER}" "${DEFREL}" ${DEFPRE+"$DEFPRE"} ${DEFOSSNOSS+"$DEFOSSNOSS"} ${DEFSIM+"$DEFSIM"} -bb SPECS/cloud.spec)
+    (cd "$RPMDIR"; rpmbuild --define "_topdir ${RPMDIR}" "${DEFVER}" "${DEFFULLVER}" "${DEFREL}" ${DEFPRE+"$DEFPRE"} ${DEFOSSNOSS+"$DEFOSSNOSS"} ${DEFSIM+"$DEFSIM"} ${DEFSKIPTESTS+"$DEFSKIPTESTS"} -bb SPECS/cloud.spec)
     if [ $? -ne 0 ]; then
         if [ "$USE_TIMESTAMP" == "true" ]; then
             (cd $PWD/../; git reset --hard)
@@ -183,6 +187,7 @@ PACKAGEVAL=""
 RELEASE=""
 BRANDING=""
 USE_TIMESTAMP="false"
+SKIP_TESTS="false"
 
 unrecognized_flags=""
 
@@ -246,6 +251,11 @@ while [ -n "$1" ]; do
             shift 1
             ;;
 
+        -n | --no-tests)
+            SKIP_TESTS="true"
+            shift 1
+            ;;
+
         -*)
             unrecognized_flags="${unrecognized_flags}$1 "
             shift 1
@@ -276,4 +286,4 @@ if [ "$USE_TIMESTAMP" == "true" ]; then
 fi
 
 echo "Packaging CloudStack..."
-packaging "$PACKAGEVAL" "$SIM" "$TARGETDISTRO" "$RELEASE" "$BRANDING" "$USE_TIMESTAMP"
+packaging "$PACKAGEVAL" "$SIM" "$TARGETDISTRO" "$RELEASE" "$BRANDING" "$USE_TIMESTAMP" "$SKIP_TESTS"

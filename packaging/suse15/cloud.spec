@@ -199,7 +199,12 @@ if [ "%{_sim}" == "SIMULATOR" -o "%{_sim}" == "simulator" ] ; then
    FLAGS="$FLAGS -Dsimulator"
 fi
 
-mvn -Psystemvm,developer $FLAGS -DskipTests=true clean package
+if [ "%{_skiptests}" == "true" ] ; then
+   echo "Adding skipTests=true flag to the maven build"
+   FLAGS="$FLAGS -DskipTests=true"
+fi
+
+mvn -Psystemvm,developer $FLAGS clean package
 cd ui && npm install && npm run build && cd ..
 
 %install
