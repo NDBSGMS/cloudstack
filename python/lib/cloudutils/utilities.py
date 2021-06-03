@@ -258,3 +258,6 @@ class serviceOpsRedhat7Later(serviceOps):
             return True
         else:
             return False
+
+class serviceOpsSuse15Later(serviceOpsRedhat7Later):
+    pass

@@ -14,8 +14,9 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-from .utilities import Distribution, serviceOpsRedhat,serviceOpsUbuntu,serviceOpsRedhat7Later
+from .utilities import Distribution, serviceOpsRedhat,serviceOpsUbuntu,serviceOpsRedhat7Later,serviceOpsSuse15Later
 from .serviceConfig import *
+
 class sysConfigFactory:
     @staticmethod
     def getSysConfigFactory(glbEnv):
@@ -43,8 +44,10 @@ class sysConfigAgentFactory:
             return sysConfigRedhat5(glbEnv)
         elif distribution == "RHEL7":
             return sysConfigRedhat7(glbEnv)
-        elif distribution == "RHEL8" or distribution == "SUSE15":
+        elif distribution == "RHEL8":
             return sysConfigRedhat8(glbEnv)
+        elif distribution == "SUSE15":
+            return sysConfigSuse15(glbEnv)
         else:
             print("Can't find the distribution version")
             return sysConfig()
@@ -154,6 +157,11 @@ class sysConfigAgentRedhat8Base(sysConfigAgent):
         self.svo = serviceOpsRedhat7Later()
         super(sysConfigAgentRedhat8Base, self).__init__(env)
 
+class sysConfigAgentSuse15Base(sysConfigAgent):
+    def __init__(self, env):
+        self.svo = serviceOpsSuse15Later()
+        super(sysConfigAgentSuse15Base, self).__init__(env)
+
 class sysConfigAgentUbuntu(sysConfigAgent):
     def __init__(self, glbEnv):
         super(sysConfigAgentUbuntu, self).__init__(glbEnv)
@@ -200,13 +208,24 @@ class sysConfigRedhat7(sysConfigAgentRedhat7Base):
                          nfsConfig(self),
                          cloudAgentConfig(self)]
 
-#it covers RHEL8/openSUSEleap15
+#it covers RHEL8
 class sysConfigRedhat8(sysConfigAgentRedhat8Base):
     def __init__(self, glbEnv):
         super(sysConfigRedhat8, self).__init__(glbEnv)
         self.services = [securityPolicyConfigRedhat(self),
                          networkConfigRedhat(self),
                          libvirtConfigRedhat(self),
+                         firewallConfigAgent(self),
+                         nfsConfig(self),
+                         cloudAgentConfig(self)]
+
+#it covers SUSE15
+class sysConfigSuse15(sysConfigAgentSuse15Base):
+    def __init__(self, glbEnv):
+        super(sysConfigSuse15, self).__init__(glbEnv)
+        self.services = [securityPolicyConfigRedhat(self),
+                         networkConfigSuse(self),
+                         libvirtConfigSuse(self),
                          firewallConfigAgent(self),
                          nfsConfig(self),
                          cloudAgentConfig(self)]

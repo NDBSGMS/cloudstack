@@ -371,6 +371,109 @@ class networkConfigRedhat(serviceCfgBase, networkConfigBase):
             logging.debug(formatExceptionInfo())
             return False
 
+class networkConfigSuse(serviceCfgBase, networkConfigBase):
+    def __init__(self, syscfg):
+        super(networkConfigSuse, self).__init__(syscfg)
+        networkConfigBase.__init__(self, syscfg)
+
+    def writeToCfgFile(self, brName, dev):
+        self.devCfgFile = "/etc/sysconfig/network/ifcfg-%s" % dev.name
+        self.brCfgFile = "/etc/sysconfig/network/ifcfg-%s" % brName
+
+        isDevExist = os.path.exists(self.devCfgFile)
+        isBrExist = os.path.exists(self.brCfgFile)
+        if isDevExist and isBrExist:
+            logging.debug("%s:%s already configured"%(brName, dev.name))
+            return True
+        elif isDevExist and not isBrExist:
+            #reconfig bridge
+            self.addBridge(brName, dev)
+        elif not isDevExist and isBrExist:
+            #reconfig dev
+            raise CloudInternalException("Missing device configuration, Need to add your network configuration into /etc/sysconfig/network-scripts at first")
+        else:
+            raise CloudInternalException("Missing bridge/device network configuration, need to add your network configuration into /etc/sysconfig/network-scripts at first")
+
+
+    def addBridge(self, brName, dev):
+        bash("ifdown %s" % dev.name)
+
+        if not os.path.exists(self.brCfgFile):
+            shutil.copy(self.devCfgFile, self.brCfgFile)
+
+        #config device file at first: disable nm, set onboot=yes if not
+        cfo = configFileOps(self.devCfgFile, self)
+        cfo.addEntry("NM_CONTROLLED", "no")
+        cfo.addEntry("ONBOOT", "yes")
+        if self.syscfg.env.bridgeType == "openvswitch":
+            if cfo.getEntry("IPADDR"):
+                cfo.rmEntry("IPADDR", cfo.getEntry("IPADDR"))
+            cfo.addEntry("DEVICETYPE", "ovs")
+            cfo.addEntry("TYPE", "OVSPort")
+            cfo.addEntry("OVS_BRIDGE", brName)
+        elif self.syscfg.env.bridgeType == "native":
+            cfo.addEntry("BRIDGE", brName)
+        else:
+            raise CloudInternalException("Unknown network.bridge.type %s" % self.syscfg.env.bridgeType)
+        cfo.save()
+
+        cfo = configFileOps(self.brCfgFile, self)
+        cfo.addEntry("NM_CONTROLLED", "no")
+        cfo.addEntry("ONBOOT", "yes")
+        cfo.addEntry("DEVICE", brName)
+        if self.syscfg.env.bridgeType == "openvswitch":
+            if cfo.getEntry("HWADDR"):
+                cfo.rmEntry("HWADDR", cfo.getEntry("HWADDR"))
+            if cfo.getEntry("UUID"):
+                cfo.rmEntry("UUID", cfo.getEntry("UUID"))
+            cfo.addEntry("STP", "yes")
+            cfo.addEntry("DEVICETYPE", "ovs")
+            cfo.addEntry("TYPE", "OVSBridge")
+        elif self.syscfg.env.bridgeType == "native":
+            cfo.addEntry("TYPE", "Bridge")
+        else:
+            raise CloudInternalException("Unknown network.bridge.type %s" % self.syscfg.env.bridgeType)
+        cfo.save()
+
+    def config(self):
+        try:
+            # if super(networkConfigRedhat, self).isPreConfiged():
+            if self.isPreConfiged():
+                return True
+
+            # super(networkConfigRedhat, self).cfgNetwork()
+            self.cfgNetwork()
+
+            self.netMgrRunning = self.syscfg.svo.isServiceRunning("NetworkManager")
+            if self.netMgrRunning:
+                self.syscfg.svo.stopService("NetworkManager")
+                self.syscfg.svo.disableService("NetworkManager")
+
+            cfo = configFileOps("/etc/sysconfig/network/config", self)
+            cfo.addEntry("NOZEROCONF", "yes")
+            cfo.save()
+
+            if not bash("service network restart").isSuccess() and not bash("systemctl restart NetworkManager.service").isSuccess():
+                raise CloudInternalException("Can't restart network")
+
+            self.syscfg.env.nics.append(self.brName)
+            self.syscfg.env.nics.append(self.brName)
+            self.syscfg.env.nics.append(self.brName)
+            return True
+        except:
+            raise
+
+    def restore(self):
+        try:
+            if self.netMgrRunning:
+                self.syscfg.svo.enableService("NetworkManager")
+                self.syscfg.svo.startService("NetworkManager")
+            bash("service network restart")
+            return True
+        except:
+            logging.debug(formatExceptionInfo())
+            return False
+
 class cgroupConfig(serviceCfgBase):
     def __init__(self, syscfg):
         super(cgroupConfig, self).__init__(syscfg)
@@ -545,6 +648,40 @@ class libvirtConfigRedhat(serviceCfgBase):
             filename = "/etc/libvirt/qemu.conf"
 
             cfo = configFileOps(filename, self)
+            cfo.addEntry("security_driver", "\"none\"")
+            cfo.addEntry("user", "\"root\"")
+            cfo.addEntry("group", "\"root\"")
+            cfo.addEntry("vnc_listen", "\"0.0.0.0\"")
+            cfo.save()
+
+            self.syscfg.svo.stopService("libvirtd")
+            if not self.syscfg.svo.startService("libvirtd"):
+                return False
+
+            return True
+        except:
+            raise
+
+    def restore(self):
+        pass
+
+class libvirtConfigSuse(serviceCfgBase):
+    def __init__(self, syscfg):
+        super(libvirtConfigSuse, self).__init__(syscfg)
+        self.serviceName = "Libvirt"
+
+    def config(self):
+        try:
+            configureLibvirtConfig(self.syscfg.env.secure, self)
+
+            if os.path.exists("/lib/systemd/system/libvirtd.socket"):
+                bash("/bin/systemctl mask libvirtd.socket");
+                bash("/bin/systemctl mask libvirtd-ro.socket");
+                bash("/bin/systemctl mask libvirtd-admin.socket");
+                bash("/bin/systemctl mask libvirtd-tls.socket");
+                bash("/bin/systemctl mask libvirtd-tcp.socket");
+
+            cfo = configFileOps("/etc/libvirt/qemu.conf", self)
             cfo.addEntry("security_driver", "\"none\"")
             cfo.addEntry("user", "\"root\"")
             cfo.addEntry("group", "\"root\"")
