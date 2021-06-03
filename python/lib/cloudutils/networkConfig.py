@@ -41,7 +41,7 @@ class networkConfig:
         return devs
     @staticmethod
     def getDefaultNetwork():
-        cmd = bash("route -n|awk \'/^0.0.0.0/ {print $2,$8}\'") 
+        cmd = bash("ip route list default|awk '{print $3,$5}'") 
         if not cmd.isSuccess():
             logging.debug("Failed to get default route")
             raise CloudRuntimeException("Failed to get default route")
@@ -141,19 +141,19 @@ class networkConfig:
         ipAddr = None
         macAddr = None
 
-        cmd = bash("ifconfig " + dev)
+        cmd = bash("ip address list " + dev)
         if not cmd.isSuccess():
             logging.debug("Failed to get address from ifconfig")
             raise CloudInternalException("Failed to get network info by ifconfig %s"%dev)
 
         for line in cmd.getLines():
-            if line.find("HWaddr") != -1:
-                macAddr = line.split("HWaddr ")[1].strip(" ")
+            if line.find("link/ether") != -1:
+                macAddr = line.strip().split(" ")[1]
             elif line.find("inet ") != -1:
-                m = re.search("addr:(.*)\ *Bcast:(.*)\ *Mask:(.*)", line)
+                m = re.search("inet\s+(\d+\.\d+\.\d+\.\d+)/(\d+)", line)
                 if m is not None:
                     ipAddr = m.group(1).rstrip(" ")
-                    netmask = m.group(3).rstrip(" ")
+                    netmask = m.group(2).rstrip(" ")
 
         if networkConfig.isBridgePort(dev):
             type = "brport"
