@@ -32,6 +32,7 @@ Ubuntu = 4
 RHEL6 = 5
 RHEL7 = 6
 RHEL8 = 7
+SUSE = 8
 distro = None
 
 #=================== DISTRIBUTION DETECTION =================
@@ -52,6 +53,7 @@ elif os.path.exists("/etc/redhat-release"):
     elif version.find("Red Hat Enterprise Linux Server 8") != -1:
       distro = RHEL8
 elif os.path.exists("/etc/lsb-release") and "Ubuntu" in open("/etc/lsb-release").read(-1): distro = Ubuntu
+elif os.path.exists("/etc/os-release") and "SUSE" in open("/etc/os-release").read(-1): distro = SUSE
 else: distro = Unknown
 #=================== DISTRIBUTION DETECTION =================
 
