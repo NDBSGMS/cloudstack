@@ -65,7 +65,7 @@ public class VirtualStorageObjectManagerMO extends BaseMO {
 
         VslmCreateSpecDiskFileBackingSpec diskFileBackingSpec = new VslmCreateSpecDiskFileBackingSpec();
         diskFileBackingSpec.setDatastore(morDS);
-        diskFileBackingSpec.setProvisioningType(diskType.value());
+        diskFileBackingSpec.setProvisioningType("lazyZeroedThick");
         // path should be just the folder name. For example, instead of '[datastore1] folder1/filename.vmdk' you would just do 'folder1'.
         // path is introduced from 6.7. In 6.5 disk will be created in the default folder "fcd"
         diskFileBackingSpec.setPath(null);
