@@ -992,7 +992,7 @@ export default {
               }
               break
             }
-            if (!input && input !== 0 && !['tags'].includes(key)) {
+            if (input === null && !['tags'].includes(key)) {
               continue
             }
             if (action.mapping && key in action.mapping && action.mapping[key].options) {
